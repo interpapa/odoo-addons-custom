@@ -13,12 +13,13 @@
         
         Strictly non-destructive and OCA standard compliant.
     """,
-    'author': 'Dispaca',
+    'author': 'David Gil',
     'website': 'https://www.dispaca.com',
     'category': 'Inventory/Inventory',
     'license': 'OPL-1',
     'price': 49.99,
     'currency': 'EUR',
+    'images': ['static/description/banner.png'],
     'depends': ['stock'],
     'data': [
         'views/report_picking_inherited.xml',
