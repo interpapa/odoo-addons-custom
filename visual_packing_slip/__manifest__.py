@@ -21,6 +21,7 @@
     'depends': ['stock'],
     'data': [
         'views/report_deliveryslip_inherited.xml',
+        'views/res_config_settings_views.xml',
     ],
     'installable': True,
     'application': False,
