@@ -22,6 +22,7 @@
     'depends': ['stock'],
     'data': [
         'views/report_picking_inherited.xml',
+        'views/res_config_settings_views.xml',
     ],
     'installable': True,
     'application': False,

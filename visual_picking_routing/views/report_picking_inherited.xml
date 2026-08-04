@@ -2,25 +2,22 @@
 <odoo>
     <template id="report_picking_custom_inherit" inherit_id="stock.report_picking">
         
-        <!-- 1. Ampliar el tamaño del código de barras principal -->
         <xpath expr="//div[@t-options and contains(@t-options, 'barcode')]" position="attributes">
             <attribute name="t-options">{'widget': 'barcode', 'width': 600, 'height': 150, 'img_style': 'width:400px;height:75px;'}</attribute>
         </xpath>
 
-        <!-- 2. Cambiar las listas a iterar por nuestras funciones Python de ordenamiento -->
         <xpath expr="//*[@t-as='ml']" position="attributes">
             <attribute name="t-foreach">o.get_visually_sorted_move_lines()</attribute>
         </xpath>
 
-        <!-- 3. Añadir la cabecera 'Imagen' en las tablas -->
         <xpath expr="//th[@name='th_product']" position="before">
-            <th name="th_image" class="text-center" width="10%">Imagen</th>
+            <th name="th_image" class="text-center" width="10%" t-if="o.company_id.visual_picking_enable_images">Image</th>
         </xpath>
 
-        <!-- 4. Añadir la celda de la imagen en las filas correspondientes -->
         <xpath expr="//*[@t-as='ml']//td[1]" position="before">
-            <td class="text-center align-middle">
-                <img t-if="ml.product_id.image_128" t-att-src="image_data_uri(ml.product_id.image_128)" style="max-height: 48px; max-width: 48px; border-radius: 4px; border: 1px solid #ddd; padding: 2px;" alt="Product Image"/>
+            <td class="text-center align-middle" t-if="o.company_id.visual_picking_enable_images">
+                <t t-set="img_size" t-value="60 if o.company_id.visual_picking_image_size == 'small' else 120 if o.company_id.visual_picking_image_size == 'large' else 90"/>
+                <img t-if="ml.product_id.image_128" t-att-src="image_data_uri(ml.product_id.image_128)" t-att-style="'max-height: %spx; max-width: %spx; border-radius: 4px; border: 1px solid #ddd; padding: 2px;' % (img_size, img_size)" alt="Product Image"/>
             </td>
         </xpath>
 
