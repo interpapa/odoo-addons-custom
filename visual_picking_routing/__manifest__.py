@@ -14,7 +14,6 @@
         Strictly non-destructive and OCA standard compliant.
     """,
     'author': 'David Gil',
-    'website': 'https://www.dispaca.com',
     'category': 'Inventory/Inventory',
     'license': 'OPL-1',
     'price': 49.99,
