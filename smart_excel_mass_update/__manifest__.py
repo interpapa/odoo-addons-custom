@@ -18,7 +18,7 @@
     'category': 'Extra Tools',
     'author': 'David Gil',
     'license': 'OPL-1',
-    'price': 149.00,
+    'price': 147.00,
     'currency': 'EUR',
     'depends': ['product'],
     'data': [
