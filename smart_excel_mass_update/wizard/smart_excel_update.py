@@ -14,18 +14,22 @@ class SmartExcelUpdate(models.TransientModel):
     _description = 'Smart Excel Mass Update & Creation Wizard'
 
     state = fields.Selection([
-        ('export', 'Export / Download'),
-        ('import', 'Upload / Process'),
+        ('draft', 'Draft'),
         ('done', 'Completed')
-    ], string='Status', default='export')
+    ], string='Status', default='draft')
+
+    main_mode = fields.Selection([
+        ('export', '📤 Export Data to Excel (Download Template)'),
+        ('import', '📥 Import Data from Excel (Sync to Odoo)')
+    ], string='What do you want to do?', default='export', required=True)
     
-    template_type = fields.Selection([
-        ('update', 'Export Selected Products for Update'),
-        ('blank', 'Download Blank Template to Create New Products')
-    ], string='Action Type', default='update', required=True)
+    export_type = fields.Selection([
+        ('update', 'Export currently selected products (for updating prices/data)'),
+        ('blank', 'Download a blank template (for creating new products from scratch)')
+    ], string='Export Option', default='update')
     
     exported_file = fields.Binary('Exported File', attachment=False)
-    import_file = fields.Binary('Import File', attachment=False)
+    import_file = fields.Binary('Select Excel File', attachment=False)
     file_name = fields.Char('File Name')
     log_message = fields.Text('Result Log', readonly=True)
 
@@ -42,10 +46,10 @@ class SmartExcelUpdate(models.TransientModel):
             cell = ws.cell(row=1, column=col_num)
             cell.value = header
             
-        if self.template_type == 'update':
+        if self.export_type == 'update':
             active_ids = self.env.context.get('active_ids', [])
             if not active_ids:
-                raise UserError(_("No records selected. Please select products from the list view first."))
+                raise UserError(_("No records selected. Please close this window, select products from the list view, and open Smart Mass Update again."))
                 
             products = self.env['product.template'].browse(active_ids)
             for row_num, product in enumerate(products, 2):
@@ -56,8 +60,9 @@ class SmartExcelUpdate(models.TransientModel):
                 ws.cell(row=row_num, column=5, value=product.list_price or 0.0)
                 ws.cell(row=row_num, column=6, value=product.standard_price or 0.0)
                 ws.cell(row=row_num, column=7, value=product.weight or 0.0)
-            filename = "Smart_Product_Update.xlsx"
+            filename = "Exported_Products_Update.xlsx"
         else:
+            # Sample row for blank template
             ws.cell(row=2, column=1, value="")
             ws.cell(row=2, column=2, value="REF-001")
             ws.cell(row=2, column=3, value="1234567890123")
@@ -65,7 +70,7 @@ class SmartExcelUpdate(models.TransientModel):
             ws.cell(row=2, column=5, value=100.0)
             ws.cell(row=2, column=6, value=50.0)
             ws.cell(row=2, column=7, value=1.5)
-            filename = "Smart_Product_Creation_Template.xlsx"
+            filename = "Blank_Product_Creation_Template.xlsx"
             
         output = io.BytesIO()
         wb.save(output)
@@ -75,7 +80,6 @@ class SmartExcelUpdate(models.TransientModel):
         self.write({
             'exported_file': file_data,
             'file_name': filename,
-            'state': 'import'
         })
         
         return {
@@ -86,7 +90,7 @@ class SmartExcelUpdate(models.TransientModel):
 
     def action_import_data(self):
         if not self.import_file:
-            raise UserError(_("Please upload your Excel file to proceed."))
+            raise UserError(_("Please select an Excel file from your computer before clicking Import."))
             
         try:
             file_data = base64.b64decode(self.import_file)
@@ -131,15 +135,15 @@ class SmartExcelUpdate(models.TransientModel):
                         product.write(vals)
                         updated_count += 1
                     else:
-                        errors.append(f"Row {row_idx}: Product ID {prod_id} not found in database.")
+                        errors.append(f"Row {row_idx}: Product ID {prod_id} not found in Odoo database.")
                 else:
                     if not name:
-                        errors.append(f"Row {row_idx}: Ignored new product creation because 'Name' is required.")
+                        errors.append(f"Row {row_idx}: Skipped creating new product because 'Name' is empty.")
                     else:
                         self.env['product.template'].create(vals)
                         created_count += 1
             except Exception as e:
-                errors.append(f"Row {row_idx}: Error ({str(e)}).")
+                errors.append(f"Row {row_idx}: Skipped due to error ({str(e)}).")
                 
         log_msg = f"🎉 Process Finished Successfully!\n"
         log_msg += f"----------------------------------------\n"
