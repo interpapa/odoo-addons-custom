@@ -11,15 +11,21 @@ except ImportError:
 
 class SmartExcelUpdate(models.TransientModel):
     _name = 'smart.excel.update'
-    _description = 'Smart Excel Mass Update Wizard'
+    _description = 'Smart Excel Mass Update & Creation Wizard'
 
     state = fields.Selection([
-        ('export', 'Export'),
-        ('import', 'Import'),
-        ('done', 'Done')
+        ('export', 'Export / Download'),
+        ('import', 'Upload / Process'),
+        ('done', 'Completed')
     ], string='Status', default='export')
     
-    excel_file = fields.Binary('Excel File', attachment=False)
+    template_type = fields.Selection([
+        ('update', 'Export Selected Products for Update'),
+        ('blank', 'Download Blank Template to Create New Products')
+    ], string='Action Type', default='update', required=True)
+    
+    exported_file = fields.Binary('Exported File', attachment=False)
+    import_file = fields.Binary('Import File', attachment=False)
     file_name = fields.Char('File Name')
     log_message = fields.Text('Result Log', readonly=True)
 
@@ -27,92 +33,121 @@ class SmartExcelUpdate(models.TransientModel):
         if not openpyxl:
             raise UserError(_("Please install the openpyxl python library to use this module."))
         
-        active_ids = self.env.context.get('active_ids', [])
-        if not active_ids:
-            raise UserError(_("No records selected. Please select products from the list view first."))
-            
-        products = self.env['product.template'].browse(active_ids)
-        
         wb = openpyxl.Workbook()
         ws = wb.active
-        ws.title = "Products Update"
+        ws.title = "Products Data"
         
-        # Headers
-        headers = ['ID (DO NOT MODIFY)', 'Internal Reference', 'Name', 'Sales Price', 'Cost']
+        headers = ['ID (Leave empty for new products)', 'Internal Reference', 'Barcode', 'Name', 'Sales Price', 'Cost', 'Weight (kg)']
         for col_num, header in enumerate(headers, 1):
             cell = ws.cell(row=1, column=col_num)
             cell.value = header
-        
-        # Data
-        for row_num, product in enumerate(products, 2):
-            ws.cell(row=row_num, column=1, value=product.id)
-            ws.cell(row=row_num, column=2, value=product.default_code or '')
-            ws.cell(row=row_num, column=3, value=product.name or '')
-            ws.cell(row=row_num, column=4, value=product.list_price or 0.0)
-            ws.cell(row=row_num, column=5, value=product.standard_price or 0.0)
             
-        # Save to BytesIO
+        if self.template_type == 'update':
+            active_ids = self.env.context.get('active_ids', [])
+            if not active_ids:
+                raise UserError(_("No records selected. Please select products from the list view first."))
+                
+            products = self.env['product.template'].browse(active_ids)
+            for row_num, product in enumerate(products, 2):
+                ws.cell(row=row_num, column=1, value=product.id)
+                ws.cell(row=row_num, column=2, value=product.default_code or '')
+                ws.cell(row=row_num, column=3, value=product.barcode or '')
+                ws.cell(row=row_num, column=4, value=product.name or '')
+                ws.cell(row=row_num, column=5, value=product.list_price or 0.0)
+                ws.cell(row=row_num, column=6, value=product.standard_price or 0.0)
+                ws.cell(row=row_num, column=7, value=product.weight or 0.0)
+            filename = "Smart_Product_Update.xlsx"
+        else:
+            ws.cell(row=2, column=1, value="")
+            ws.cell(row=2, column=2, value="REF-001")
+            ws.cell(row=2, column=3, value="1234567890123")
+            ws.cell(row=2, column=4, value="Sample New Product")
+            ws.cell(row=2, column=5, value=100.0)
+            ws.cell(row=2, column=6, value=50.0)
+            ws.cell(row=2, column=7, value=1.5)
+            filename = "Smart_Product_Creation_Template.xlsx"
+            
         output = io.BytesIO()
         wb.save(output)
         output.seek(0)
         
         file_data = base64.b64encode(output.read())
         self.write({
-            'excel_file': file_data,
-            'file_name': "Smart_Product_Update.xlsx",
+            'exported_file': file_data,
+            'file_name': filename,
             'state': 'import'
         })
         
-        # Return action to trigger automatic browser download
         return {
             'type': 'ir.actions.act_url',
-            'url': f'/web/content/?model=smart.excel.update&id={self.id}&field=excel_file&filename=Smart_Product_Update.xlsx&download=true',
+            'url': f'/web/content/?model=smart.excel.update&id={self.id}&field=exported_file&filename={filename}&download=true',
             'target': 'self',
         }
-        
+
     def action_import_data(self):
-        if not self.excel_file:
-            raise UserError(_("Please upload an Excel file."))
+        if not self.import_file:
+            raise UserError(_("Please upload your Excel file to proceed."))
             
         try:
-            file_data = base64.b64decode(self.excel_file)
+            file_data = base64.b64decode(self.import_file)
             input_stream = io.BytesIO(file_data)
             wb = openpyxl.load_workbook(input_stream, data_only=True)
             ws = wb.active
         except Exception as e:
             raise UserError(_("Invalid Excel file: %s") % str(e))
             
-        success_count = 0
+        updated_count = 0
+        created_count = 0
         errors = []
         
         for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), 2):
-            if not row or not row[0]:
+            if not row or (row[0] is None and not any(row[1:])):
                 continue
                 
             try:
-                prod_id = int(row[0])
-                default_code = row[1] if row[1] is not None else ''
-                name = row[2]
-                list_price = float(row[3]) if row[3] is not None else 0.0
-                standard_price = float(row[4]) if row[4] is not None else 0.0
+                raw_id = row[0]
+                default_code = str(row[1]).strip() if row[1] is not None else False
+                barcode = str(row[2]).strip() if row[2] is not None else False
+                name = str(row[3]).strip() if row[3] is not None else False
+                list_price = float(row[4]) if len(row) > 4 and row[4] is not None else 0.0
+                standard_price = float(row[5]) if len(row) > 5 and row[5] is not None else 0.0
+                weight = float(row[6]) if len(row) > 6 and row[6] is not None else 0.0
                 
-                product = self.env['product.template'].browse(prod_id)
-                if product.exists():
-                    product.write({
-                        'default_code': str(default_code) if default_code else False,
-                        'name': str(name) if name else product.name,
-                        'list_price': list_price,
-                        'standard_price': standard_price
-                    })
-                    success_count += 1
+                vals = {}
+                if default_code is not False: vals['default_code'] = default_code
+                if barcode is not False: vals['barcode'] = barcode
+                if name is not False: vals['name'] = name
+                vals['list_price'] = list_price
+                vals['standard_price'] = standard_price
+                vals['weight'] = weight
+                
+                prod_id = None
+                if raw_id is not None and str(raw_id).strip().isdigit():
+                    prod_id = int(str(raw_id).strip())
+                    
+                if prod_id:
+                    product = self.env['product.template'].browse(prod_id)
+                    if product.exists():
+                        product.write(vals)
+                        updated_count += 1
+                    else:
+                        errors.append(f"Row {row_idx}: Product ID {prod_id} not found in database.")
                 else:
-                    errors.append(f"Row {row_idx}: Product ID {prod_id} not found in database.")
+                    if not name:
+                        errors.append(f"Row {row_idx}: Ignored new product creation because 'Name' is required.")
+                    else:
+                        self.env['product.template'].create(vals)
+                        created_count += 1
             except Exception as e:
-                errors.append(f"Row {row_idx}: Ignored due to format error ({str(e)}).")
+                errors.append(f"Row {row_idx}: Error ({str(e)}).")
                 
-        log_msg = f"✅ Update Complete!\nSuccessfully updated: {success_count} products.\n"
+        log_msg = f"🎉 Process Finished Successfully!\n"
+        log_msg += f"----------------------------------------\n"
+        log_msg += f"✏️ Updated Existing Products: {updated_count}\n"
+        log_msg += f"✨ Created New Products: {created_count}\n"
+        
         if errors:
-            log_msg += "\n⚠️ Errors / Ignored Rows:\n" + "\n".join(errors)
+            log_msg += f"\n⚠️ Ignored Rows / Errors ({len(errors)}):\n" + "\n".join(errors)
             
         self.log_message = log_msg
         self.state = 'done'
