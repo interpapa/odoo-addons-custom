@@ -29,7 +29,7 @@ class SmartExcelUpdate(models.TransientModel):
         
         active_ids = self.env.context.get('active_ids', [])
         if not active_ids:
-            raise UserError(_("No records selected."))
+            raise UserError(_("No records selected. Please select products from the list view first."))
             
         products = self.env['product.template'].browse(active_ids)
         
@@ -51,23 +51,23 @@ class SmartExcelUpdate(models.TransientModel):
             ws.cell(row=row_num, column=4, value=product.list_price or 0.0)
             ws.cell(row=row_num, column=5, value=product.standard_price or 0.0)
             
-        # Protect column A conceptually by alerting the user
-        
         # Save to BytesIO
         output = io.BytesIO()
         wb.save(output)
         output.seek(0)
         
-        self.excel_file = base64.b64encode(output.read())
-        self.file_name = "Smart_Product_Update.xlsx"
-        self.state = 'import'
+        file_data = base64.b64encode(output.read())
+        self.write({
+            'excel_file': file_data,
+            'file_name': "Smart_Product_Update.xlsx",
+            'state': 'import'
+        })
         
+        # Return action to trigger automatic browser download
         return {
-            'type': 'ir.actions.act_window',
-            'res_model': 'smart.excel.update',
-            'view_mode': 'form',
-            'res_id': self.id,
-            'target': 'new',
+            'type': 'ir.actions.act_url',
+            'url': f'/web/content/?model=smart.excel.update&id={self.id}&field=excel_file&filename=Smart_Product_Update.xlsx&download=true',
+            'target': 'self',
         }
         
     def action_import_data(self):
