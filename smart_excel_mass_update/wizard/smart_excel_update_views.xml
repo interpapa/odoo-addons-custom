@@ -4,35 +4,37 @@
         <field name="name">smart.excel.update.form</field>
         <field name="model">smart.excel.update</field>
         <field name="arch" type="xml">
-            <form string="Smart Excel Mass Update">
+            <form string="Smart Excel Mass Manager">
                 <field name="state" invisible="1"/>
                 
-                <div attrs="{\'invisible\': [(\'state\', \'!=\', \'export\')]}">
-                    <div class="alert alert-info text-center" role="alert">
-                        <strong>Step 1: Download Template</strong><br/>
-                        Click below to generate a smart Excel template containing the selected products.<br/>
-                        <span class="text-danger"><b>Do not modify or delete the ID column (Column A).</b></span>
-                    </div>
-                </div>
-                
-                <div attrs="{\'invisible\': [(\'state\', \'!=\', \'import\')]}">
-                    <div class="alert alert-warning text-center" role="alert">
-                        <strong>Step 2: Upload Modified Data</strong><br/>
-                        Download your generated template (if you haven't yet), update the values in Excel, and upload the modified file below.
+                <div attrs="{'invisible': [('state', '!=', 'export')]}">
+                    <div class="alert alert-info" role="alert">
+                        <strong>Step 1: Choose Action &amp; Download Template</strong><br/>
+                        Select whether you want to export selected products for updating, or download a blank template for creating new products.
                     </div>
                     <group>
-                        <field name="file_name" invisible="1"/>
-                        <field name="excel_file" filename="file_name" widget="binary" string="Your Modified Excel"/>
+                        <field name="template_type" widget="radio"/>
                     </group>
                 </div>
                 
-                <div attrs="{\'invisible\': [(\'state\', \'!=\', \'done\')]}">
-                    <field name="log_message" readonly="1" nolabel="1" widget="text" style="color: #333; font-family: monospace; height: 150px; background-color: #f8f9fa; padding: 10px; border-radius: 5px;"/>
+                <div attrs="{'invisible': [('state', '!=', 'import')]}">
+                    <div class="alert alert-warning" role="alert">
+                        <strong>Step 2: Upload Excel File to Sync</strong><br/>
+                        Upload your modified or new Excel file below.
+                    </div>
+                    <group>
+                        <field name="file_name" invisible="1"/>
+                        <field name="import_file" filename="file_name" widget="binary" string="Upload Excel File"/>
+                    </group>
+                </div>
+                
+                <div attrs="{'invisible': [('state', '!=', 'done')]}">
+                    <field name="log_message" readonly="1" nolabel="1" widget="text" style="color: #155724; font-family: monospace; min-height: 180px; background-color: #d4edda; padding: 12px; border-radius: 6px; border: 1px solid #c3e6cb;"/>
                 </div>
                 
                 <footer>
-                    <button name="action_generate_template" string="Generate Template" type="object" class="btn-primary" attrs="{\'invisible\': [(\'state\', \'!=\', \'export\')]}"/>
-                    <button name="action_import_data" string="Update Database" type="object" class="btn-success" attrs="{\'invisible\': [(\'state\', \'!=\', \'import\')]}"/>
+                    <button name="action_generate_template" string="Download Excel Template" type="object" class="btn-primary" attrs="{'invisible': [('state', '!=', 'export')]}"/>
+                    <button name="action_import_data" string="Sync to Odoo (Update / Create)" type="object" class="btn-success" attrs="{'invisible': [('state', '!=', 'import')]}"/>
                     <button special="cancel" string="Close Wizard" class="btn-secondary"/>
                 </footer>
             </form>
@@ -40,7 +42,7 @@
     </record>
 
     <record id="action_smart_excel_update" model="ir.actions.act_window">
-        <field name="name">Smart Mass Update (Excel)</field>
+        <field name="name">Smart Mass Update / Create (Excel)</field>
         <field name="res_model">smart.excel.update</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
