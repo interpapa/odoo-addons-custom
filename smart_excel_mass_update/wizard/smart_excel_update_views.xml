@@ -4,38 +4,50 @@
         <field name="name">smart.excel.update.form</field>
         <field name="model">smart.excel.update</field>
         <field name="arch" type="xml">
-            <form string="Smart Excel Mass Manager">
+            <form string="Smart Excel Manager">
                 <field name="state" invisible="1"/>
                 
-                <div attrs="{'invisible': [('state', '!=', 'export')]}">
-                    <div class="alert alert-info" role="alert">
-                        <strong>Step 1: Choose Action &amp; Download Template</strong><br/>
-                        Select whether you want to export selected products for updating, or download a blank template for creating new products.
-                    </div>
+                <div attrs="{'invisible': [('state', '!=', 'draft')]}">
                     <group>
-                        <field name="template_type" widget="radio"/>
+                        <field name="main_mode" widget="radio" class="fw-bold"/>
                     </group>
+                    
+                    <!-- EXPORT SECTION -->
+                    <div attrs="{'invisible': [('main_mode', '!=', 'export')]}" class="card p-3 my-2 bg-light">
+                        <h5 class="text-primary mb-2">📤 Export Options</h5>
+                        <p class="text-muted small">
+                            Choose whether you want to export your currently selected products to edit them, or download an empty file to create new products.
+                        </p>
+                        <group>
+                            <field name="export_type" widget="radio"/>
+                        </group>
+                    </div>
+                    
+                    <!-- IMPORT SECTION -->
+                    <div attrs="{'invisible': [('main_mode', '!=', 'import')]}" class="card p-3 my-2 bg-light">
+                        <h5 class="text-success mb-2">📥 Import &amp; Sync to Odoo</h5>
+                        <p class="text-muted small">
+                            Select the Excel file from your computer. If Column A has an ID, existing products will be updated. If Column A is empty, new products will be created.
+                        </p>
+                        <group>
+                            <field name="file_name" invisible="1"/>
+                            <field name="import_file" filename="file_name" widget="binary" string="Choose Excel File"/>
+                        </group>
+                    </div>
                 </div>
                 
-                <div attrs="{'invisible': [('state', '!=', 'import')]}">
-                    <div class="alert alert-warning" role="alert">
-                        <strong>Step 2: Upload Excel File to Sync</strong><br/>
-                        Upload your modified or new Excel file below.
-                    </div>
-                    <group>
-                        <field name="file_name" invisible="1"/>
-                        <field name="import_file" filename="file_name" widget="binary" string="Upload Excel File"/>
-                    </group>
-                </div>
-                
+                <!-- RESULT SECTION -->
                 <div attrs="{'invisible': [('state', '!=', 'done')]}">
-                    <field name="log_message" readonly="1" nolabel="1" widget="text" style="color: #155724; font-family: monospace; min-height: 180px; background-color: #d4edda; padding: 12px; border-radius: 6px; border: 1px solid #c3e6cb;"/>
+                    <div class="alert alert-success" role="alert">
+                        <strong>Processing Complete!</strong> Below is the summary of updated and created records.
+                    </div>
+                    <field name="log_message" readonly="1" nolabel="1" widget="text" style="color: #155724; font-family: monospace; min-height: 200px; background-color: #d4edda; padding: 12px; border-radius: 6px; border: 1px solid #c3e6cb;"/>
                 </div>
                 
                 <footer>
-                    <button name="action_generate_template" string="Download Excel Template" type="object" class="btn-primary" attrs="{'invisible': [('state', '!=', 'export')]}"/>
-                    <button name="action_import_data" string="Sync to Odoo (Update / Create)" type="object" class="btn-success" attrs="{'invisible': [('state', '!=', 'import')]}"/>
-                    <button special="cancel" string="Close Wizard" class="btn-secondary"/>
+                    <button name="action_generate_template" string="Generate &amp; Download Excel" type="object" class="btn-primary" attrs="{'invisible': ['|', ('state', '!=', 'draft'), ('main_mode', '!=', 'export')]}"/>
+                    <button name="action_import_data" string="Import to Odoo" type="object" class="btn-success" attrs="{'invisible': ['|', ('state', '!=', 'draft'), ('main_mode', '!=', 'import')]}"/>
+                    <button special="cancel" string="Close" class="btn-secondary"/>
                 </footer>
             </form>
         </field>
