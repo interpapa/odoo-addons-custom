@@ -15,6 +15,7 @@
     """,
     'author': 'David Gil',
     'category': 'Inventory/Inventory',
+    'images': ['static/description/banner.jpg'],
     'license': 'OPL-1',
     'price': 49.99,
     'currency': 'EUR',
