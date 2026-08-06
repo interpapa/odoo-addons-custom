@@ -6,7 +6,7 @@
             <th name="th_sm_image" class="text-center" t-if="o.company_id.visual_packing_enable_images"><strong>Image</strong></th>
         </xpath>
 
-        <xpath expr="//table[@name='stock_move_table']/tbody/tr/td[1]" position="before">
+        <xpath expr="//table[@name='stock_move_table']//tbody//tr/td[1]" position="before">
             <td class="text-center" t-if="o.company_id.visual_packing_enable_images">
                 <t t-set="img_size" t-value="60 if o.company_id.visual_packing_image_size == 'small' else 120 if o.company_id.visual_packing_image_size == 'large' else 90"/>
                 <span t-if="move.product_id.image_128" t-field="move.product_id.image_128" t-options="{'widget': 'image', 'qweb_img_responsive': False, 'style': 'max-height: ' + str(img_size) + 'px; max-width: ' + str(img_size) + 'px;'}"/>
@@ -17,7 +17,7 @@
             <th name="th_sml_image" class="text-center" t-if="o.company_id.visual_packing_enable_images"><strong>Image</strong></th>
         </xpath>
 
-        <xpath expr="//table[@name='stock_move_line_table']/tbody/tr/td[1]" position="before">
+        <xpath expr="//table[@name='stock_move_line_table']//tbody//tr/td[1]" position="before">
             <td class="text-center" t-if="o.company_id.visual_packing_enable_images">
                 <t t-set="img_size" t-value="60 if o.company_id.visual_packing_image_size == 'small' else 120 if o.company_id.visual_packing_image_size == 'large' else 90"/>
                 <span t-if="move_line.product_id.image_128" t-field="move_line.product_id.image_128" t-options="{'widget': 'image', 'qweb_img_responsive': False, 'style': 'max-height: ' + str(img_size) + 'px; max-width: ' + str(img_size) + 'px;'}"/>
