@@ -3,11 +3,44 @@ from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 import base64
 import io
+import re
 
 try:
     import openpyxl
 except ImportError:
     openpyxl = None
+
+def _clean_int(val):
+    if val is None or val is False:
+        return None
+    try:
+        f = float(str(val).strip())
+        if f.is_integer():
+            return int(f)
+    except (ValueError, TypeError):
+        pass
+    return None
+
+def _clean_float(val):
+    if val is None or val is False:
+        return 0.0
+    s = str(val).strip().replace('$', '').replace('€', '').replace(' ', '')
+    s = s.replace(',', '.')
+    s = re.sub(r'[^\d.-]', '', s)
+    try:
+        return float(s)
+    except (ValueError, TypeError):
+        return 0.0
+
+def _clean_str(val):
+    if val is None or val is False:
+        return False
+    s = str(val).strip()
+    if not s:
+        return False
+    if s.endswith('.0') and s[:-2].replace('.', '').isdigit():
+        s = s[:-2]
+    return s
 
 class SmartExcelUpdate(models.TransientModel):
     _name = 'smart.excel.update'
@@ -78,8 +111,9 @@ class SmartExcelUpdate(models.TransientModel):
             id_to_row = {}
             for r in range(2, ws.max_row + 1):
                 val = ws.cell(row=r, column=1).value
-                if val is not None and str(val).strip().isdigit():
-                    id_to_row[int(str(val).strip())] = r
+                parsed_id = _clean_int(val)
+                if parsed_id:
+                    id_to_row[parsed_id] = r
             
             for product in products:
                 if product.id in id_to_row:
@@ -194,7 +228,7 @@ class SmartExcelUpdate(models.TransientModel):
             wb = openpyxl.load_workbook(input_stream, data_only=True)
             ws = wb.active
         except Exception as e:
-            raise UserError(_("Invalid Excel file: %s") % str(e))
+            raise UserError(_("Invalid Excel spreadsheet (.xlsx): %s") % str(e))
             
         updated_count = 0
         created_count = 0
@@ -204,57 +238,55 @@ class SmartExcelUpdate(models.TransientModel):
         is_spanish = user_lang.startswith('es')
 
         for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), 2):
-            if not row or (row[0] is None and not any(row[1:])):
+            if not row or all(v is None for v in row):
                 continue
                 
-            try:
-                raw_id = row[0]
-                default_code = str(row[1]).strip() if row[1] is not None else False
-                barcode = str(row[2]).strip() if row[2] is not None else False
-                name = str(row[3]).strip() if row[3] is not None else False
-                list_price = float(row[4]) if len(row) > 4 and row[4] is not None else 0.0
-                standard_price = float(row[5]) if len(row) > 5 and row[5] is not None else 0.0
-                categ_name = str(row[6]).strip() if len(row) > 6 and row[6] is not None else False
-                weight = float(row[7]) if len(row) > 7 and row[7] is not None else 0.0
-                description = str(row[8]).strip() if len(row) > 8 and row[8] is not None else False
-                
-                vals = {}
-                if default_code is not False: vals['default_code'] = default_code
-                if barcode is not False: vals['barcode'] = barcode
-                if name is not False: vals['name'] = name
-                vals['list_price'] = list_price
-                vals['standard_price'] = standard_price
-                vals['weight'] = weight
-                if description is not False: vals['description_sale'] = description
-                
-                if categ_name:
-                    categ = self.env['product.category'].search([('name', '=', categ_name)], limit=1)
-                    if not categ:
-                        categ = self.env['product.category'].search([('complete_name', '=', categ_name)], limit=1)
-                    if categ:
-                        vals['categ_id'] = categ.id
+            raw_id = _clean_int(row[0]) if len(row) > 0 else None
+            default_code = _clean_str(row[1]) if len(row) > 1 else False
+            barcode = _clean_str(row[2]) if len(row) > 2 else False
+            name = _clean_str(row[3]) if len(row) > 3 else False
+            list_price = _clean_float(row[4]) if len(row) > 4 else 0.0
+            standard_price = _clean_float(row[5]) if len(row) > 5 else 0.0
+            categ_name = _clean_str(row[6]) if len(row) > 6 else False
+            weight = _clean_float(row[7]) if len(row) > 7 else 0.0
+            description = _clean_str(row[8]) if len(row) > 8 else False
+            
+            vals = {}
+            if default_code is not False: vals['default_code'] = default_code
+            if barcode is not False: vals['barcode'] = barcode
+            if name is not False: vals['name'] = name
+            vals['list_price'] = list_price
+            vals['standard_price'] = standard_price
+            vals['weight'] = weight
+            if description is not False: vals['description_sale'] = description
+            
+            if categ_name:
+                categ = self.env['product.category'].search([('name', '=', categ_name)], limit=1)
+                if not categ:
+                    categ = self.env['product.category'].search([('complete_name', '=', categ_name)], limit=1)
+                if categ:
+                    vals['categ_id'] = categ.id
 
-                prod_id = None
-                if raw_id is not None and str(raw_id).strip().isdigit():
-                    prod_id = int(str(raw_id).strip())
-                    
-                if prod_id:
-                    product = self.env['product.template'].browse(prod_id)
-                    if product.exists():
-                        product.write(vals)
-                        updated_count += 1
+            try:
+                with self.env.cr.savepoint():
+                    if raw_id:
+                        product = self.env['product.template'].browse(raw_id)
+                        if product.exists():
+                            product.write(vals)
+                            updated_count += 1
+                        else:
+                            msg = f"Fila {row_idx}: Producto ID {raw_id} no encontrado en Odoo." if is_spanish else f"Row {row_idx}: Product ID {raw_id} not found in Odoo."
+                            errors.append(msg)
                     else:
-                        msg = f"Fila {row_idx}: Producto ID {prod_id} no encontrado." if is_spanish else f"Row {row_idx}: Product ID {prod_id} not found."
-                        errors.append(msg)
-                else:
-                    if not name:
-                        msg = f"Fila {row_idx}: Omitido producto nuevo porque el 'Nombre' está vacío." if is_spanish else f"Row {row_idx}: Skipped new product because 'Name' is empty."
-                        errors.append(msg)
-                    else:
-                        self.env['product.template'].create(vals)
-                        created_count += 1
+                        if not name:
+                            msg = f"Fila {row_idx}: Omitido producto nuevo porque el 'Nombre' está vacío." if is_spanish else f"Row {row_idx}: Skipped new product because 'Name' is empty."
+                            errors.append(msg)
+                        else:
+                            self.env['product.template'].create(vals)
+                            created_count += 1
             except Exception as e:
-                msg = f"Fila {row_idx}: Error ({str(e)})." if is_spanish else f"Row {row_idx}: Error ({str(e)})."
+                err_clean = str(e).split('\n')[0]
+                msg = f"Fila {row_idx}: Error ({err_clean})." if is_spanish else f"Row {row_idx}: Error ({err_clean})."
                 errors.append(msg)
                 
         if is_spanish:
