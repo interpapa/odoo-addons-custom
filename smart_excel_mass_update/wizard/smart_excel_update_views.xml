@@ -12,11 +12,16 @@
                     <!-- EXPORT SECTION -->
                     <div invisible="main_mode != 'export'">
                         <div class="alert alert-info" role="alert">
-                            <strong>📤 Export Products to Excel</strong><br/>
-                            Choose whether to export selected products to edit them, or download an empty template to create new products.
+                            <strong>📤 Export Products / Sync Excel</strong><br/>
+                            Select options to export selected products or update an existing Excel file on your PC.
                         </div>
                         <group>
+                            <field name="product_ids" widget="many2many_tags" readonly="1"/>
                             <field name="export_type" widget="radio"/>
+                        </group>
+                        <group invisible="export_type != 'update'">
+                            <field name="existing_filename" invisible="1"/>
+                            <field name="existing_file" filename="existing_filename" widget="binary" string="Update Existing Excel File (Optional)" help="Optional: Upload an existing Excel file from your computer to update/add the selected products directly inside it. Leave empty to generate a fresh file."/>
                         </group>
                     </div>
                     
