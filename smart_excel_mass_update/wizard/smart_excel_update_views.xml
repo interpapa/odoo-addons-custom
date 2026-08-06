@@ -7,6 +7,7 @@
             <form string="Smart Excel Manager">
                 <field name="state" invisible="1"/>
                 <field name="main_mode" invisible="1"/>
+                <field name="exported_file" invisible="1"/>
                 
                 <div invisible="state != 'draft'">
                     <!-- EXPORT SECTION -->
@@ -41,14 +42,15 @@
                 <!-- RESULT SECTION -->
                 <div invisible="state != 'done'">
                     <div class="alert alert-success" role="alert">
-                        <strong>Processing Complete!</strong> Below is the summary of updated and created records.
+                        <strong>Processing Complete!</strong> Below is the summary of your operation.
                     </div>
-                    <field name="log_message" readonly="1" nolabel="1" widget="text" style="color: #155724; font-family: monospace; min-height: 200px; background-color: #d4edda; padding: 12px; border-radius: 6px; border: 1px solid #c3e6cb;"/>
+                    <field name="log_message" readonly="1" nolabel="1" widget="text" style="color: #155724; font-family: monospace; min-height: 180px; background-color: #d4edda; padding: 12px; border-radius: 6px; border: 1px solid #c3e6cb;"/>
                 </div>
                 
                 <footer>
-                    <button name="action_generate_template" string="📤 Generate &amp; Download Excel" type="object" class="btn-primary" invisible="state != 'draft' or main_mode != 'export'"/>
+                    <button name="action_generate_template" string="📤 Generate Excel File" type="object" class="btn-primary" invisible="state != 'draft' or main_mode != 'export'"/>
                     <button name="action_import_data" string="📥 Import / Sync to Odoo" type="object" class="btn-success" invisible="state != 'draft' or main_mode != 'import'"/>
+                    <button name="action_download_file" string="⬇️ Download Excel File" type="object" class="btn-primary" invisible="state != 'done' or not exported_file"/>
                     <button special="cancel" string="Close" class="btn-secondary"/>
                 </footer>
             </form>
