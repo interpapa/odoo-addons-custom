@@ -24,14 +24,31 @@ class SmartExcelUpdate(models.TransientModel):
     ], string='Operation', default='export', required=True)
     
     export_type = fields.Selection([
-        ('update', 'Export selected products (for updating prices/data)'),
+        ('update', 'Export / Sync selected products'),
         ('blank', 'Download a blank template (for creating new products from scratch)')
     ], string='Export Option', default='update')
     
+    product_ids = fields.Many2many(
+        'product.template',
+        string='Selected Products'
+    )
+    
+    existing_file = fields.Binary('Update Existing Excel File (Optional)', attachment=False)
+    existing_filename = fields.Char('Existing File Name')
+
     exported_file = fields.Binary('Exported File', attachment=False)
     import_file = fields.Binary('Select Excel File', attachment=False)
     file_name = fields.Char('File Name')
     log_message = fields.Text('Result Log', readonly=True)
+
+    @api.model
+    def default_get(self, fields_list):
+        res = super(SmartExcelUpdate, self).default_get(fields_list)
+        active_ids = self.env.context.get('active_ids', [])
+        active_model = self.env.context.get('active_model')
+        if active_model == 'product.template' and active_ids:
+            res['product_ids'] = [(6, 0, active_ids)]
+        return res
 
     def action_generate_template(self):
         if not openpyxl:
@@ -40,44 +57,95 @@ class SmartExcelUpdate(models.TransientModel):
         user_lang = self.env.user.lang or 'en_US'
         is_spanish = user_lang.startswith('es')
 
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Products Data"
-        
-        if is_spanish:
-            headers = ['ID (Dejar vacio para nuevos)', 'Referencia Interna', 'Codigo de Barras', 'Nombre', 'Precio de Venta', 'Costo', 'Categoria', 'Peso (kg)', 'Descripcion']
-        else:
-            headers = ['ID (Leave empty for new products)', 'Internal Reference', 'Barcode', 'Name', 'Sales Price', 'Cost', 'Category', 'Weight (kg)', 'Description']
-            
-        for col_num, header in enumerate(headers, 1):
-            cell = ws.cell(row=1, column=col_num)
-            cell.value = header
-            
         if self.export_type == 'update':
-            active_ids = self.env.context.get('active_ids', [])
-            if not active_ids:
-                raise UserError(_("No records selected. Please select products from the list view first before exporting."))
+            products = self.product_ids
+            if not products:
+                active_ids = self.env.context.get('active_ids', [])
+                if active_ids:
+                    products = self.env['product.template'].browse(active_ids)
+                    
+            if not products:
+                raise UserError(_("No products selected. Please select products from the list view first before exporting."))
+
+            if self.existing_file:
+                try:
+                    file_data = base64.b64decode(self.existing_file)
+                    input_stream = io.BytesIO(file_data)
+                    wb = openpyxl.load_workbook(input_stream)
+                    ws = wb.active
+                except Exception as e:
+                    raise UserError(_("Could not read uploaded Excel file: %s") % str(e))
                 
-            products = self.env['product.template'].browse(active_ids)
-            for row_num, product in enumerate(products, 2):
-                ws.cell(row=row_num, column=1, value=product.id)
-                ws.cell(row=row_num, column=2, value=product.default_code or '')
-                ws.cell(row=row_num, column=3, value=product.barcode or '')
-                ws.cell(row=row_num, column=4, value=product.name or '')
-                ws.cell(row=row_num, column=5, value=product.list_price or 0.0)
-                ws.cell(row=row_num, column=6, value=product.standard_price or 0.0)
-                ws.cell(row=row_num, column=7, value=product.categ_id.display_name or '')
-                ws.cell(row=row_num, column=8, value=product.weight or 0.0)
-                ws.cell(row=row_num, column=9, value=product.description_sale or '')
-            filename = "Productos_Exportados.xlsx" if is_spanish else "Exported_Products.xlsx"
+                # Map existing IDs in Column A (Row 2 onwards)
+                id_to_row = {}
+                for r in range(2, ws.max_row + 1):
+                    val = ws.cell(row=r, column=1).value
+                    if val is not None and str(val).strip().isdigit():
+                        id_to_row[int(str(val).strip())] = r
+                
+                for product in products:
+                    if product.id in id_to_row:
+                        r = id_to_row[product.id]
+                    else:
+                        r = ws.max_row + 1
+                        id_to_row[product.id] = r
+                        
+                    ws.cell(row=r, column=1, value=product.id)
+                    ws.cell(row=r, column=2, value=product.default_code or '')
+                    ws.cell(row=r, column=3, value=product.barcode or '')
+                    ws.cell(row=r, column=4, value=product.name or '')
+                    ws.cell(row=r, column=5, value=product.list_price or 0.0)
+                    ws.cell(row=r, column=6, value=product.standard_price or 0.0)
+                    ws.cell(row=r, column=7, value=product.categ_id.display_name or '')
+                    ws.cell(row=r, column=8, value=product.weight or 0.0)
+                    ws.cell(row=r, column=9, value=product.description_sale or '')
+                    
+                filename = self.existing_filename or ("Productos_Actualizados.xlsx" if is_spanish else "Updated_Products.xlsx")
+            else:
+                wb = openpyxl.Workbook()
+                ws = wb.active
+                ws.title = "Products Data"
+                
+                if is_spanish:
+                    headers = ['ID (Dejar vacio para nuevos)', 'Referencia Interna', 'Codigo de Barras', 'Nombre', 'Precio de Venta', 'Costo', 'Categoria', 'Peso (kg)', 'Descripcion']
+                else:
+                    headers = ['ID (Leave empty for new products)', 'Internal Reference', 'Barcode', 'Name', 'Sales Price', 'Cost', 'Category', 'Weight (kg)', 'Description']
+                    
+                for col_num, header in enumerate(headers, 1):
+                    ws.cell(row=1, column=col_num, value=header)
+                    
+                for row_num, product in enumerate(products, 2):
+                    ws.cell(row=row_num, column=1, value=product.id)
+                    ws.cell(row=row_num, column=2, value=product.default_code or '')
+                    ws.cell(row=row_num, column=3, value=product.barcode or '')
+                    ws.cell(row=row_num, column=4, value=product.name or '')
+                    ws.cell(row=row_num, column=5, value=product.list_price or 0.0)
+                    ws.cell(row=row_num, column=6, value=product.standard_price or 0.0)
+                    ws.cell(row=row_num, column=7, value=product.categ_id.display_name or '')
+                    ws.cell(row=row_num, column=8, value=product.weight or 0.0)
+                    ws.cell(row=row_num, column=9, value=product.description_sale or '')
+                filename = "Productos_Exportados.xlsx" if is_spanish else "Exported_Products.xlsx"
         else:
+            # BLANK TEMPLATE
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Products Data"
+            
+            if is_spanish:
+                headers = ['ID (Dejar vacio para nuevos)', 'Referencia Interna', 'Codigo de Barras', 'Nombre', 'Precio de Venta', 'Costo', 'Categoria', 'Peso (kg)', 'Descripcion']
+            else:
+                headers = ['ID (Leave empty for new products)', 'Internal Reference', 'Barcode', 'Name', 'Sales Price', 'Cost', 'Category', 'Weight (kg)', 'Description']
+                
+            for col_num, header in enumerate(headers, 1):
+                ws.cell(row=1, column=col_num, value=header)
+                
             ws.cell(row=2, column=1, value="")
             ws.cell(row=2, column=2, value="REF-001")
             ws.cell(row=2, column=3, value="1234567890123")
             ws.cell(row=2, column=4, value="Producto de Ejemplo" if is_spanish else "Sample New Product")
             ws.cell(row=2, column=5, value=100.0)
             ws.cell(row=2, column=6, value=50.0)
-            ws.cell(row=2, column=7, value="All / Saleable" if not is_spanish else "All")
+            ws.cell(row=2, column=7, value="All")
             ws.cell(row=2, column=8, value=1.5)
             ws.cell(row=2, column=9, value="Descripción corta del producto" if is_spanish else "Short product description")
             filename = "Plantilla_Creacion_Productos.xlsx" if is_spanish else "Product_Creation_Template.xlsx"
