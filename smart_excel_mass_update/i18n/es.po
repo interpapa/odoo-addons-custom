@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 17.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-05 22:50+0000\n"
-"PO-Revision-Date: 2026-08-05 22:50+0000\n"
+"POT-Creation-Date: 2026-08-06 15:15+0000\n"
+"PO-Revision-Date: 2026-08-06 15:15+0000\n"
 "Last-Translator: \n"
 "Language-Team: Spanish\n"
 "MIME-Version: 1.0\n"
@@ -24,3 +24,19 @@ msgstr "📤 Smart Excel: Exportar Productos"
 #: model:ir.actions.act_window,name:smart_excel_mass_update.action_smart_excel_import
 msgid "📥 Smart Excel: Import / Sync File"
 msgstr "📥 Smart Excel: Importar / Sincronizar Archivo"
+
+#. module: smart_excel_mass_update
+msgid "Selected Products"
+msgstr "Productos Seleccionados"
+
+#. module: smart_excel_mass_update
+msgid "Update Existing Excel File (Optional)"
+msgstr "Actualizar Archivo Excel Existente (Opcional)"
+
+#. module: smart_excel_mass_update
+msgid "Export / Sync selected products"
+msgstr "Exportar / Sincronizar productos seleccionados"
+
+#. module: smart_excel_mass_update
+msgid "Download a blank template (for creating new products from scratch)"
+msgstr "Descargar plantilla en blanco (para crear productos nuevos desde cero)"
