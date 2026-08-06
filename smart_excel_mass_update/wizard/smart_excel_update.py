@@ -24,7 +24,7 @@ class SmartExcelUpdate(models.TransientModel):
     ], string='Operation', default='export', required=True)
     
     export_type = fields.Selection([
-        ('update', 'Export currently selected products (for updating prices/data)'),
+        ('update', 'Export selected products (for updating prices/data)'),
         ('blank', 'Download a blank template (for creating new products from scratch)')
     ], string='Export Option', default='update')
     
@@ -37,11 +37,18 @@ class SmartExcelUpdate(models.TransientModel):
         if not openpyxl:
             raise UserError(_("Please install the openpyxl python library to use this module."))
         
+        user_lang = self.env.user.lang or 'en_US'
+        is_spanish = user_lang.startswith('es')
+
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Products Data"
         
-        headers = ['ID (Leave empty for new products)', 'Internal Reference', 'Barcode', 'Name', 'Sales Price', 'Cost', 'Weight (kg)']
+        if is_spanish:
+            headers = ['ID (Dejar vacio para nuevos)', 'Referencia Interna', 'Codigo de Barras', 'Nombre', 'Precio de Venta', 'Costo', 'Categoria', 'Peso (kg)', 'Descripcion']
+        else:
+            headers = ['ID (Leave empty for new products)', 'Internal Reference', 'Barcode', 'Name', 'Sales Price', 'Cost', 'Category', 'Weight (kg)', 'Description']
+            
         for col_num, header in enumerate(headers, 1):
             cell = ws.cell(row=1, column=col_num)
             cell.value = header
@@ -59,17 +66,21 @@ class SmartExcelUpdate(models.TransientModel):
                 ws.cell(row=row_num, column=4, value=product.name or '')
                 ws.cell(row=row_num, column=5, value=product.list_price or 0.0)
                 ws.cell(row=row_num, column=6, value=product.standard_price or 0.0)
-                ws.cell(row=row_num, column=7, value=product.weight or 0.0)
-            filename = "Exported_Products_Update.xlsx"
+                ws.cell(row=row_num, column=7, value=product.categ_id.display_name or '')
+                ws.cell(row=row_num, column=8, value=product.weight or 0.0)
+                ws.cell(row=row_num, column=9, value=product.description_sale or '')
+            filename = "Productos_Exportados.xlsx" if is_spanish else "Exported_Products.xlsx"
         else:
             ws.cell(row=2, column=1, value="")
             ws.cell(row=2, column=2, value="REF-001")
             ws.cell(row=2, column=3, value="1234567890123")
-            ws.cell(row=2, column=4, value="Sample New Product")
+            ws.cell(row=2, column=4, value="Producto de Ejemplo" if is_spanish else "Sample New Product")
             ws.cell(row=2, column=5, value=100.0)
             ws.cell(row=2, column=6, value=50.0)
-            ws.cell(row=2, column=7, value=1.5)
-            filename = "Blank_Product_Creation_Template.xlsx"
+            ws.cell(row=2, column=7, value="All / Saleable" if not is_spanish else "All")
+            ws.cell(row=2, column=8, value=1.5)
+            ws.cell(row=2, column=9, value="Descripción corta del producto" if is_spanish else "Short product description")
+            filename = "Plantilla_Creacion_Productos.xlsx" if is_spanish else "Product_Creation_Template.xlsx"
             
         output = io.BytesIO()
         wb.save(output)
@@ -103,6 +114,9 @@ class SmartExcelUpdate(models.TransientModel):
         created_count = 0
         errors = []
         
+        user_lang = self.env.user.lang or 'en_US'
+        is_spanish = user_lang.startswith('es')
+
         for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), 2):
             if not row or (row[0] is None and not any(row[1:])):
                 continue
@@ -114,7 +128,9 @@ class SmartExcelUpdate(models.TransientModel):
                 name = str(row[3]).strip() if row[3] is not None else False
                 list_price = float(row[4]) if len(row) > 4 and row[4] is not None else 0.0
                 standard_price = float(row[5]) if len(row) > 5 and row[5] is not None else 0.0
-                weight = float(row[6]) if len(row) > 6 and row[6] is not None else 0.0
+                categ_name = str(row[6]).strip() if len(row) > 6 and row[6] is not None else False
+                weight = float(row[7]) if len(row) > 7 and row[7] is not None else 0.0
+                description = str(row[8]).strip() if len(row) > 8 and row[8] is not None else False
                 
                 vals = {}
                 if default_code is not False: vals['default_code'] = default_code
@@ -123,7 +139,15 @@ class SmartExcelUpdate(models.TransientModel):
                 vals['list_price'] = list_price
                 vals['standard_price'] = standard_price
                 vals['weight'] = weight
+                if description is not False: vals['description_sale'] = description
                 
+                if categ_name:
+                    categ = self.env['product.category'].search([('name', '=', categ_name)], limit=1)
+                    if not categ:
+                        categ = self.env['product.category'].search([('complete_name', '=', categ_name)], limit=1)
+                    if categ:
+                        vals['categ_id'] = categ.id
+
                 prod_id = None
                 if raw_id is not None and str(raw_id).strip().isdigit():
                     prod_id = int(str(raw_id).strip())
@@ -134,23 +158,33 @@ class SmartExcelUpdate(models.TransientModel):
                         product.write(vals)
                         updated_count += 1
                     else:
-                        errors.append(f"Row {row_idx}: Product ID {prod_id} not found in Odoo database.")
+                        msg = f"Fila {row_idx}: Producto ID {prod_id} no encontrado." if is_spanish else f"Row {row_idx}: Product ID {prod_id} not found."
+                        errors.append(msg)
                 else:
                     if not name:
-                        errors.append(f"Row {row_idx}: Skipped creating new product because 'Name' is empty.")
+                        msg = f"Fila {row_idx}: Omitido producto nuevo porque el 'Nombre' está vacío." if is_spanish else f"Row {row_idx}: Skipped new product because 'Name' is empty."
+                        errors.append(msg)
                     else:
                         self.env['product.template'].create(vals)
                         created_count += 1
             except Exception as e:
-                errors.append(f"Row {row_idx}: Skipped due to error ({str(e)}).")
+                msg = f"Fila {row_idx}: Error ({str(e)})." if is_spanish else f"Row {row_idx}: Error ({str(e)})."
+                errors.append(msg)
                 
-        log_msg = f"🎉 Process Finished Successfully!\n"
-        log_msg += f"----------------------------------------\n"
-        log_msg += f"✏️ Updated Existing Products: {updated_count}\n"
-        log_msg += f"✨ Created New Products: {created_count}\n"
-        
-        if errors:
-            log_msg += f"\n⚠️ Ignored Rows / Errors ({len(errors)}):\n" + "\n".join(errors)
+        if is_spanish:
+            log_msg = f"🎉 ¡Proceso Finalizado con Éxito!\n"
+            log_msg += f"----------------------------------------\n"
+            log_msg += f"✏️ Productos Existentes Actualizados: {updated_count}\n"
+            log_msg += f"✨ Productos Nuevos Creados: {created_count}\n"
+            if errors:
+                log_msg += f"\n⚠️ Filas Ignoradas / Errores ({len(errors)}):\n" + "\n".join(errors)
+        else:
+            log_msg = f"🎉 Process Finished Successfully!\n"
+            log_msg += f"----------------------------------------\n"
+            log_msg += f"✏️ Updated Existing Products: {updated_count}\n"
+            log_msg += f"✨ Created New Products: {created_count}\n"
+            if errors:
+                log_msg += f"\n⚠️ Ignored Rows / Errors ({len(errors)}):\n" + "\n".join(errors)
             
         self.log_message = log_msg
         self.state = 'done'
