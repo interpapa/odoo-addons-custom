@@ -13,24 +13,20 @@
                     <!-- EXPORT SECTION -->
                     <div invisible="main_mode != 'export'">
                         <div class="alert alert-info" role="alert">
-                            <strong>📤 Export Products / Sync Excel</strong><br/>
-                            Select options to export selected products or update an existing Excel file on your PC.
+                            <strong>📤 Export Products to Excel</strong><br/>
+                            Export selected products to an Excel file to edit prices, costs, barcodes, or add new items.
                         </div>
                         <group>
                             <field name="product_ids" widget="many2many_tags" readonly="1"/>
                             <field name="export_type" widget="radio"/>
-                        </group>
-                        <group invisible="export_type != 'update'">
-                            <field name="existing_filename" invisible="1"/>
-                            <field name="existing_file" filename="existing_filename" widget="binary" string="Update Existing Excel File (Optional)" help="Optional: Upload an existing Excel file from your computer to update/add the selected products directly inside it. Leave empty to generate a fresh file."/>
                         </group>
                     </div>
                     
                     <!-- IMPORT SECTION -->
                     <div invisible="main_mode != 'import'">
                         <div class="alert alert-success" role="alert">
-                            <strong>📥 Import Excel File to Odoo</strong><br/>
-                            Select your Excel file. Rows with IDs will update existing products. Rows without IDs will create new products.
+                            <strong>📥 Import / Sync Excel File to Odoo</strong><br/>
+                            Upload your Excel file. Rows with IDs will update existing products. Rows without IDs will create new products.
                         </div>
                         <group>
                             <field name="file_name" invisible="1"/>

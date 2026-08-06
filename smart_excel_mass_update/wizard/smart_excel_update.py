@@ -65,9 +65,6 @@ class SmartExcelUpdate(models.TransientModel):
         'product.template',
         string='Selected Products'
     )
-    
-    existing_file = fields.Binary('Update Existing Excel File (Optional)', attachment=False)
-    existing_filename = fields.Char('Existing File Name')
 
     exported_file = fields.Binary('Exported File', attachment=False)
     import_file = fields.Binary('Select Excel File', attachment=False)
@@ -96,86 +93,50 @@ class SmartExcelUpdate(models.TransientModel):
             if active_ids:
                 products = self.env['product.template'].browse(active_ids)
                 
-        if self.export_type == 'update' and not products and not self.existing_file:
+        if self.export_type == 'update' and not products:
             raise UserError(_("No products selected. Please select products from the list view first before exporting."))
 
-        if self.existing_file and self.export_type == 'update':
-            try:
-                file_data = base64.b64decode(self.existing_file)
-                input_stream = io.BytesIO(file_data)
-                wb = openpyxl.load_workbook(input_stream)
-                ws = wb.active
-            except Exception as e:
-                raise UserError(_("Could not read uploaded Excel file: %s") % str(e))
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Products Data"
+        
+        if is_spanish:
+            headers = ['ID (Dejar vacio para nuevos)', 'Referencia Interna', 'Codigo de Barras', 'Nombre', 'Precio de Venta', 'Costo', 'Categoria', 'Peso (kg)', 'Descripcion']
+        else:
+            headers = ['ID (Leave empty for new products)', 'Internal Reference', 'Barcode', 'Name', 'Sales Price', 'Cost', 'Category', 'Weight (kg)', 'Description']
             
-            id_to_row = {}
-            for r in range(2, ws.max_row + 1):
-                val = ws.cell(row=r, column=1).value
-                parsed_id = _clean_int(val)
-                if parsed_id:
-                    id_to_row[parsed_id] = r
+        for col_num, header in enumerate(headers, 1):
+            ws.cell(row=1, column=col_num, value=header)
             
-            for product in products:
-                if product.id in id_to_row:
-                    r = id_to_row[product.id]
-                else:
-                    r = ws.max_row + 1
-                    id_to_row[product.id] = r
-                    
-                ws.cell(row=r, column=1, value=product.id)
-                ws.cell(row=r, column=2, value=product.default_code or '')
-                ws.cell(row=r, column=3, value=product.barcode or '')
-                ws.cell(row=r, column=4, value=product.name or '')
-                ws.cell(row=r, column=5, value=product.list_price or 0.0)
-                ws.cell(row=r, column=6, value=product.standard_price or 0.0)
-                ws.cell(row=r, column=7, value=product.categ_id.display_name or '')
-                ws.cell(row=r, column=8, value=product.weight or 0.0)
-                ws.cell(row=r, column=9, value=product.description_sale or '')
-                
-            filename = self.existing_filename or ("Productos_Actualizados.xlsx" if is_spanish else "Updated_Products.xlsx")
+        if products:
+            for row_num, product in enumerate(products, 2):
+                ws.cell(row=row_num, column=1, value=product.id if self.export_type == 'update' else "")
+                ws.cell(row=row_num, column=2, value=product.default_code or '')
+                ws.cell(row=row_num, column=3, value=product.barcode or '')
+                ws.cell(row=row_num, column=4, value=product.name or '')
+                ws.cell(row=row_num, column=5, value=product.list_price or 0.0)
+                ws.cell(row=row_num, column=6, value=product.standard_price or 0.0)
+                ws.cell(row=row_num, column=7, value=product.categ_id.display_name or '')
+                ws.cell(row=row_num, column=8, value=product.weight or 0.0)
+                ws.cell(row=row_num, column=9, value=product.description_sale or '')
             count_exported = len(products)
         else:
-            wb = openpyxl.Workbook()
-            ws = wb.active
-            ws.title = "Products Data"
-            
-            if is_spanish:
-                headers = ['ID (Dejar vacio para nuevos)', 'Referencia Interna', 'Codigo de Barras', 'Nombre', 'Precio de Venta', 'Costo', 'Categoria', 'Peso (kg)', 'Descripcion']
-            else:
-                headers = ['ID (Leave empty for new products)', 'Internal Reference', 'Barcode', 'Name', 'Sales Price', 'Cost', 'Category', 'Weight (kg)', 'Description']
-                
-            for col_num, header in enumerate(headers, 1):
-                ws.cell(row=1, column=col_num, value=header)
-                
-            if products:
-                for row_num, product in enumerate(products, 2):
-                    ws.cell(row=row_num, column=1, value=product.id if self.export_type == 'update' else "")
-                    ws.cell(row=row_num, column=2, value=product.default_code or '')
-                    ws.cell(row=row_num, column=3, value=product.barcode or '')
-                    ws.cell(row=row_num, column=4, value=product.name or '')
-                    ws.cell(row=row_num, column=5, value=product.list_price or 0.0)
-                    ws.cell(row=row_num, column=6, value=product.standard_price or 0.0)
-                    ws.cell(row=row_num, column=7, value=product.categ_id.display_name or '')
-                    ws.cell(row=row_num, column=8, value=product.weight or 0.0)
-                    ws.cell(row=row_num, column=9, value=product.description_sale or '')
-                count_exported = len(products)
-            else:
-                ws.cell(row=2, column=1, value="")
-                ws.cell(row=2, column=2, value="REF-001")
-                ws.cell(row=2, column=3, value="1234567890123")
-                ws.cell(row=2, column=4, value="Producto de Ejemplo" if is_spanish else "Sample New Product")
-                ws.cell(row=2, column=5, value=100.0)
-                ws.cell(row=2, column=6, value=50.0)
-                ws.cell(row=2, column=7, value="All")
-                ws.cell(row=2, column=8, value=1.5)
-                ws.cell(row=2, column=9, value="Descripción corta del producto" if is_spanish else "Short product description")
-                count_exported = 1
+            ws.cell(row=2, column=1, value="")
+            ws.cell(row=2, column=2, value="REF-001")
+            ws.cell(row=2, column=3, value="1234567890123")
+            ws.cell(row=2, column=4, value="Producto de Ejemplo" if is_spanish else "Sample New Product")
+            ws.cell(row=2, column=5, value=100.0)
+            ws.cell(row=2, column=6, value=50.0)
+            ws.cell(row=2, column=7, value="All")
+            ws.cell(row=2, column=8, value=1.5)
+            ws.cell(row=2, column=9, value="Descripción corta del producto" if is_spanish else "Short product description")
+            count_exported = 1
 
-            if self.export_type == 'update':
-                filename = "Productos_Exportados.xlsx" if is_spanish else "Exported_Products.xlsx"
-            else:
-                filename = "Plantilla_Creacion_Productos.xlsx" if is_spanish else "Product_Creation_Template.xlsx"
-            
+        if self.export_type == 'update':
+            filename = "Productos_Exportados.xlsx" if is_spanish else "Exported_Products.xlsx"
+        else:
+            filename = "Plantilla_Creacion_Productos.xlsx" if is_spanish else "Product_Creation_Template.xlsx"
+        
         output = io.BytesIO()
         wb.save(output)
         output.seek(0)
