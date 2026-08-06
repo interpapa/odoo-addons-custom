@@ -19,9 +19,9 @@ class SmartExcelUpdate(models.TransientModel):
     ], string='Status', default='draft')
 
     main_mode = fields.Selection([
-        ('export', '📤 Export Data to Excel (Download Template)'),
-        ('import', '📥 Import Data from Excel (Sync to Odoo)')
-    ], string='What do you want to do?', default='export', required=True)
+        ('export', 'Export to Excel'),
+        ('import', 'Import to Odoo')
+    ], string='Operation', default='export', required=True)
     
     export_type = fields.Selection([
         ('update', 'Export currently selected products (for updating prices/data)'),
@@ -49,7 +49,7 @@ class SmartExcelUpdate(models.TransientModel):
         if self.export_type == 'update':
             active_ids = self.env.context.get('active_ids', [])
             if not active_ids:
-                raise UserError(_("No records selected. Please close this window, select products from the list view, and open Smart Mass Update again."))
+                raise UserError(_("No records selected. Please select products from the list view first before exporting."))
                 
             products = self.env['product.template'].browse(active_ids)
             for row_num, product in enumerate(products, 2):
@@ -62,7 +62,6 @@ class SmartExcelUpdate(models.TransientModel):
                 ws.cell(row=row_num, column=7, value=product.weight or 0.0)
             filename = "Exported_Products_Update.xlsx"
         else:
-            # Sample row for blank template
             ws.cell(row=2, column=1, value="")
             ws.cell(row=2, column=2, value="REF-001")
             ws.cell(row=2, column=3, value="1234567890123")
