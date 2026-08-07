@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_smart_excel_update_form" model="ir.ui.view">
+        <field name="name">smart.excel.update.form</field>
+        <field name="model">smart.excel.update</field>
+        <field name="arch" type="xml">
+            <form string="Smart Excel Manager">
+                <field name="state" invisible="1"/>
+                <field name="main_mode" invisible="1"/>
+                <field name="exported_file" invisible="1"/>
+                
+                <div invisible="state != 'draft'">
+                    <!-- EXPORT SECTION -->
+                    <div invisible="main_mode != 'export'">
+                        <div class="alert alert-info" role="alert">
+                            <strong>📤 Export Products to Excel</strong><br/>
+                            Export selected products to an Excel file to edit prices, costs, barcodes, or add new items.
+                        </div>
+                        <group>
+                            <field name="product_ids" widget="many2many_tags" readonly="1"/>
+                            <field name="export_type" widget="radio"/>
+                        </group>
+                    </div>
+                    
+                    <!-- IMPORT SECTION -->
+                    <div invisible="main_mode != 'import'">
+                        <div class="alert alert-success" role="alert">
+                            <strong>📥 Import / Sync Excel File to Odoo</strong><br/>
+                            Upload your Excel file. Rows with IDs will update existing products. Rows without IDs will create new products.
+                        </div>
+                        <group>
+                            <field name="file_name" invisible="1"/>
+                            <field name="import_file" filename="file_name" widget="binary" string="Select Excel File"/>
+                        </group>
+                    </div>
+                </div>
+                
+                <!-- RESULT SECTION -->
+                <div invisible="state != 'done'">
+                    <div class="alert alert-success" role="alert">
+                        <strong>Processing Complete!</strong> Below is the summary of your operation.
+                    </div>
+                    <field name="log_message" readonly="1" nolabel="1" widget="text" style="color: #155724; font-family: monospace; min-height: 180px; background-color: #d4edda; padding: 12px; border-radius: 6px; border: 1px solid #c3e6cb;"/>
+                </div>
+                
+                <footer>
+                    <button name="action_generate_template" string="📤 Generate Excel File" type="object" class="btn-primary" invisible="state != 'draft' or main_mode != 'export'"/>
+                    <button name="action_import_data" string="📥 Import / Sync to Odoo" type="object" class="btn-success" invisible="state != 'draft' or main_mode != 'import'"/>
+                    <button name="action_download_file" string="⬇️ Download Excel File" type="object" class="btn-primary" invisible="state != 'done' or not exported_file"/>
+                    <button special="cancel" string="Close" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Contextual Action 1: EXPORT -->
+    <record id="action_smart_excel_export" model="ir.actions.act_window">
+        <field name="name">📤 Smart Excel: Export Products</field>
+        <field name="res_model">smart.excel.update</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{'default_main_mode': 'export'}</field>
+        <field name="binding_model_id" ref="product.model_product_template"/>
+        <field name="binding_view_types">list,form</field>
+    </record>
+
+    <!-- Contextual Action 2: IMPORT -->
+    <record id="action_smart_excel_import" model="ir.actions.act_window">
+        <field name="name">📥 Smart Excel: Import / Sync File</field>
+        <field name="res_model">smart.excel.update</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{'default_main_mode': 'import'}</field>
+        <field name="binding_model_id" ref="product.model_product_template"/>
+        <field name="binding_view_types">list,form</field>
+    </record>
+</odoo>
