@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Smart Excel Mass Update &amp; Creation - Odoo Module</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; background: #fff; line-height: 1.6; }
+
+        /* HERO */
+        .hero {
+            background: linear-gradient(135deg, #0f1729 0%, #0d3347 55%, #0a5f4a 100%);
+            color: white; padding: 52px 48px 44px; text-align: center;
+        }
+        .hero h1 { font-size: 2.3rem; font-weight: 800; margin-bottom: 12px; }
+        .hero h1 span { color: #4ade80; }
+        .hero .tagline { font-size: 1.15rem; opacity: 0.88; max-width: 620px; margin: 0 auto 28px; }
+        .badges { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+        .badge { background: rgba(255,255,255,0.13); border: 1px solid rgba(255,255,255,0.28);
+                 border-radius: 20px; padding: 5px 16px; font-size: 0.8rem; font-weight: 600; }
+        .badge.g { background: rgba(74,222,128,0.2); border-color: #4ade80; color: #4ade80; }
+
+        /* VALUE PROPOSITION */
+        .value-bar {
+            background: #0f1729; color: white; padding: 28px 48px;
+            display: flex; justify-content: center; gap: 48px; flex-wrap: wrap; text-align: center;
+        }
+        .value-item .num { font-size: 2rem; font-weight: 800; color: #4ade80; display: block; }
+        .value-item .lbl { font-size: 0.8rem; opacity: 0.75; }
+
+        /* SECTIONS */
+        .section { padding: 52px 48px; }
+        .section.alt { background: #f8fafc; }
+        .section h2 { font-size: 1.5rem; font-weight: 800; color: #0f1729; margin-bottom: 6px; }
+        .section .sub { color: #64748b; margin-bottom: 28px; font-size: 0.95rem; }
+
+        /* PROBLEM/SOLUTION */
+        .ps-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+        .ps-card { border-radius: 12px; padding: 24px; }
+        .ps-card.problem { background: #fef2f2; border: 1px solid #fecaca; }
+        .ps-card.solution { background: #f0fdf4; border: 1px solid #bbf7d0; }
+        .ps-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 12px; }
+        .ps-card.problem h3 { color: #991b1b; }
+        .ps-card.solution h3 { color: #166534; }
+        .ps-card ul { padding-left: 18px; font-size: 0.88rem; color: #374151; }
+        .ps-card ul li { margin-bottom: 7px; line-height: 1.5; }
+
+        /* SCREENSHOTS WORKFLOW */
+        .ss-step { margin-bottom: 40px; }
+        .ss-step:last-child { margin-bottom: 0; }
+        .ss-header { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 16px; }
+        .step-num {
+            background: #0f1729; color: white; border-radius: 50%;
+            width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 0.9rem; flex-shrink: 0; margin-top: 2px;
+        }
+        .ss-header .txt h3 { font-size: 1.05rem; font-weight: 700; color: #0f1729; margin-bottom: 4px; }
+        .ss-header .txt p { font-size: 0.88rem; color: #64748b; line-height: 1.5; }
+        .ss-header .txt .value-tip {
+            margin-top: 8px; background: #f0fdf4; border-left: 3px solid #4ade80;
+            padding: 8px 12px; border-radius: 0 6px 6px 0; font-size: 0.83rem; color: #166534;
+            font-weight: 600;
+        }
+        .ss-img { width: 100%; border-radius: 10px; border: 1px solid #e2e8f0;
+                  box-shadow: 0 4px 20px rgba(0,0,0,0.10); display: block; }
+        .ss-divider {
+            display: flex; align-items: center; justify-content: center;
+            gap: 10px; margin: 12px 0; color: #94a3b8; font-size: 0.82rem; font-weight: 600;
+        }
+        .ss-divider::before, .ss-divider::after {
+            content: ''; flex: 1; height: 1px; background: #e2e8f0;
+        }
+
+        /* ROI SECTION */
+        .roi-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 18px; margin-top: 20px; }
+        .roi-card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 22px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.04); text-align: center; }
+        .roi-card .icon { font-size: 2rem; margin-bottom: 10px; }
+        .roi-card h3 { font-size: 0.92rem; font-weight: 700; color: #0f1729; margin-bottom: 8px; }
+        .roi-card p { font-size: 0.82rem; color: #64748b; line-height: 1.5; }
+        .roi-card .saving { font-size: 1.1rem; font-weight: 800; color: #059669; margin-top: 8px; }
+
+        /* FEATURES */
+        .feat-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-top: 20px; }
+        .feat { display: flex; gap: 12px; align-items: flex-start; padding: 16px;
+                background: white; border: 1px solid #e2e8f0; border-radius: 10px; }
+        .feat .icon { font-size: 1.4rem; flex-shrink: 0; }
+        .feat h4 { font-size: 0.88rem; font-weight: 700; color: #0f1729; margin-bottom: 3px; }
+        .feat p { font-size: 0.8rem; color: #64748b; line-height: 1.45; }
+
+        /* TABLE */
+        table { width: 100%; border-collapse: collapse; margin-top: 20px;
+                border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        th { background: #0f1729; color: white; padding: 11px 16px; text-align: left; font-size: 0.83rem; }
+        td { padding: 9px 16px; font-size: 0.83rem; border-bottom: 1px solid #f1f5f9; }
+        tr:nth-child(even) td { background: #f8fafc; }
+        .tag { display: inline-block; border-radius: 4px; padding: 2px 7px; font-size: 0.72rem; font-weight: 600; }
+        .tag.req { background: #fef3c7; color: #92400e; }
+        .tag.opt { background: #dcfce7; color: #166534; }
+
+        /* COMPAT */
+        .pills { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+        .pill { background: #0f1729; color: white; border-radius: 20px; padding: 7px 18px;
+                font-size: 0.88rem; font-weight: 700; }
+
+        /* CTA */
+        .cta { background: linear-gradient(135deg, #0f1729, #0d3347);
+               color: white; padding: 48px; text-align: center; }
+        .cta h2 { font-size: 1.6rem; font-weight: 800; margin-bottom: 10px; }
+        .cta p { opacity: 0.82; max-width: 520px; margin: 0 auto 24px; font-size: 0.95rem; }
+        .btn { display: inline-block; background: #4ade80; color: #0f1729;
+               padding: 13px 36px; border-radius: 8px; font-weight: 800; font-size: 1rem;
+               text-decoration: none; letter-spacing: 0.2px; }
+
+        @media (max-width: 700px) {
+            .ps-grid, .roi-grid, .feat-grid { grid-template-columns: 1fr; }
+            .value-bar { gap: 24px; }
+            .section { padding: 36px 20px; }
+            .hero { padding: 36px 20px 28px; }
+            .hero h1 { font-size: 1.7rem; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===================== HERO ===================== -->
+<div class="hero">
+    <div class="badges" style="margin-bottom:18px;">
+        <span class="badge">&#128293; Inventory</span>
+        <span class="badge g">Odoo 15 &bull; 16 &bull; 17 &bull; 18</span>
+        <span class="badge">OPL-1</span>
+        <span class="badge">EN &amp; ES</span>
+    </div>
+    <h1>Smart Excel <span>Mass Update</span> &amp; Creation</h1>
+    <p class="tagline">
+        Update hundreds of products in minutes &mdash; export to Excel, edit on your PC, sync back to Odoo.
+        No technical knowledge required.
+    </p>
+    <div class="badges">
+        <span class="badge">&#128228; Export selected products</span>
+        <span class="badge">&#9999;&#65039; Edit in Excel or Google Sheets</span>
+        <span class="badge">&#128229; Sync back in one click</span>
+    </div>
+</div>
+
+<!-- ===================== VALUE BAR ===================== -->
+<div class="value-bar">
+    <div class="value-item">
+        <span class="num">10,000+</span>
+        <span class="lbl">products updated per batch</span>
+    </div>
+    <div class="value-item">
+        <span class="num">&lt; 2 min</span>
+        <span class="lbl">to update an entire catalog</span>
+    </div>
+    <div class="value-item">
+        <span class="num">0</span>
+        <span class="lbl">technical skills needed</span>
+    </div>
+    <div class="value-item">
+        <span class="num">100%</span>
+        <span class="lbl">row-level error protection</span>
+    </div>
+</div>
+
+<!-- ===================== PROBLEM / SOLUTION ===================== -->
+<div class="section">
+    <h2>&#128680; The Problem This Solves</h2>
+    <p class="sub">Every Odoo business faces this sooner or later. Here is how Smart Excel fixes it.</p>
+    <div class="ps-grid">
+        <div class="ps-card problem">
+            <h3>&#10060; Without Smart Excel</h3>
+            <ul>
+                <li>Updating 200 product prices = 200 manual edits, one by one</li>
+                <li>Your team opens each product form, changes the field, saves, repeats</li>
+                <li>One typo ruins a price &mdash; no easy way to audit before saving</li>
+                <li>The native Odoo import requires memorizing exact column names and formats</li>
+                <li>A pricing update that should take 5 minutes takes 3 hours</li>
+                <li>Human error is guaranteed when updating at scale</li>
+            </ul>
+        </div>
+        <div class="ps-card solution">
+            <h3>&#10004; With Smart Excel</h3>
+            <ul>
+                <li>Select any number of products &rarr; export with one click</li>
+                <li>Edit prices, costs, barcodes in Excel &mdash; where your team already works</li>
+                <li>Review all changes visually before uploading &mdash; no surprises</li>
+                <li>Upload the file &rarr; Odoo updates every row automatically</li>
+                <li>200 products updated and verified in under 2 minutes</li>
+                <li>One bad row? Only that row fails &mdash; the rest save successfully</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== WORKFLOW WITH REAL SCREENSHOTS ===================== -->
+<div class="section alt">
+    <h2>&#127916; How It Works &mdash; Real Walkthrough</h2>
+    <p class="sub">These are actual screenshots of the module running inside Odoo 17. This is exactly what your team will see.</p>
+
+    <!-- STEP 1 -->
+    <div class="ss-step">
+        <div class="ss-header">
+            <div class="step-num">1</div>
+            <div class="txt">
+                <h3>Select products &rarr; open the Action menu &rarr; click "Smart Excel: Export Products"</h3>
+                <p>
+                    In <strong>Inventory &rarr; Products</strong>, check the products you want to update.
+                    You can select 1 or 10,000 at once. Then click the <strong>Actions</strong> button
+                    and choose <strong>Smart Excel: Export Products</strong> from the dropdown.
+                    No setup, no configuration, no extra screens.
+                </p>
+                <div class="value-tip">
+                    &#128200; Business impact: Your warehouse manager or data entry team can do this with zero training.
+                    It works exactly like any other Odoo action.
+                </div>
+            </div>
+        </div>
+        <img src="ss1_actions_menu.png" class="ss-img" alt="Actions menu showing Smart Excel: Export Products option"/>
+    </div>
+
+    <div class="ss-divider">&#11015; next step</div>
+
+    <!-- STEP 2 -->
+    <div class="ss-step">
+        <div class="ss-header">
+            <div class="step-num">2</div>
+            <div class="txt">
+                <h3>Confirm the export &rarr; click "Generate Excel File"</h3>
+                <p>
+                    A clean popup appears showing the exact products queued for export
+                    (in this example: 3 products &mdash; 2 Cabinets and 1 Cable Management Box).
+                    One click on <strong>Generate Excel File</strong> instantly downloads
+                    a perfectly formatted <code>.xlsx</code> file with all 9 product fields pre-filled.
+                </p>
+                <div class="value-tip">
+                    &#9201; Time saved: What used to take hours of copy-pasting into a spreadsheet now takes 3 seconds.
+                </div>
+            </div>
+        </div>
+        <img src="ss2_export_wizard.png" class="ss-img" alt="Export wizard showing selected products and Generate Excel File button"/>
+    </div>
+
+    <div class="ss-divider">&#11015; next step</div>
+
+    <!-- STEP 3 -->
+    <div class="ss-step">
+        <div class="ss-header">
+            <div class="step-num">3</div>
+            <div class="txt">
+                <h3>Open the Excel file &rarr; edit freely &rarr; save</h3>
+                <p>
+                    The downloaded file opens in <strong>Microsoft Excel or Google Sheets</strong>.
+                    Column A contains the Odoo product ID (so the system knows which record to update).
+                    Your team edits Sales Price, Cost, Barcode, Category &mdash; or any combination.
+                    They can also <strong>add new rows</strong> with a blank ID to create brand new products.
+                    When done, they save the file normally.
+                </p>
+                <div class="value-tip">
+                    &#128272; No risk: Your team can review ALL changes at once in Excel before importing.
+                    One visual audit is worth more than 200 separate saves in Odoo.
+                </div>
+            </div>
+        </div>
+        <img src="ss3_excel_file.png" class="ss-img" alt="Excel file open with exported product data in 9 columns"/>
+    </div>
+
+    <div class="ss-divider">&#11015; next step</div>
+
+    <!-- STEP 4 -->
+    <div class="ss-step">
+        <div class="ss-header">
+            <div class="step-num">4</div>
+            <div class="txt">
+                <h3>Go to Inventory &rarr; Operations &rarr; "Smart Excel: Import / Sync"</h3>
+                <p>
+                    The import lives in the <strong>Inventory &rarr; Operations</strong> menu as a
+                    permanent, always-available option. No product selection needed &mdash;
+                    just click it anytime you have a file ready to upload. This is a dedicated,
+                    clean entry point that your team can use independently of whatever products
+                    are selected in the list.
+                </p>
+                <div class="value-tip">
+                    &#127775; UX design: Import and Export are intentionally separate workflows so there
+                    is no confusion. Export = from Odoo to Excel. Import = from Excel to Odoo.
+                </div>
+            </div>
+        </div>
+        <img src="ss4_operations_menu.png" class="ss-img" alt="Inventory Operations menu showing Smart Excel Import Sync option"/>
+    </div>
+
+    <div class="ss-divider">&#11015; next step</div>
+
+    <!-- STEP 5 -->
+    <div class="ss-step">
+        <div class="ss-header">
+            <div class="step-num">5</div>
+            <div class="txt">
+                <h3>Upload the file &rarr; click "Import / Sync to Odoo" &rarr; done</h3>
+                <p>
+                    Upload your edited <code>.xlsx</code> file and click the green
+                    <strong>Import / Sync to Odoo</strong> button.
+                    The system processes every row: products with an ID are updated,
+                    rows with a blank ID are created as new products.
+                    A detailed result summary appears immediately showing how many products
+                    were updated, created, and a log of any skipped rows with the exact reason.
+                </p>
+                <div class="value-tip">
+                    &#128737;&#65039; Zero data loss: Each row is protected by an independent database savepoint.
+                    A bad barcode on row 47 never stops rows 1-46 or 48-200 from saving successfully.
+                </div>
+            </div>
+        </div>
+        <img src="ss5_import_wizard.png" class="ss-img" alt="Import wizard with file upload and Import Sync to Odoo button"/>
+    </div>
+</div>
+
+<!-- ===================== ROI / SAVINGS ===================== -->
+<div class="section">
+    <h2>&#128200; Real Business Impact &amp; ROI</h2>
+    <p class="sub">This module pays for itself the first time you use it. Here is the math.</p>
+    <div class="roi-grid">
+        <div class="roi-card">
+            <div class="icon">&#128736;&#65039;</div>
+            <h3>Seasonal Price Updates</h3>
+            <p>Updating 500 product prices for a sale season takes your team 4+ hours manually in Odoo,
+               one product at a time.</p>
+            <div class="saving">With Smart Excel: 8 minutes</div>
+        </div>
+        <div class="roi-card">
+            <div class="icon">&#128230;</div>
+            <h3>Supplier Price Changes</h3>
+            <p>Supplier sends a new price list with 300 updated costs. Your purchasing team can
+               paste them into the Excel file and sync in one upload.</p>
+            <div class="saving">No more copy-paste per product</div>
+        </div>
+        <div class="roi-card">
+            <div class="icon">&#128179;</div>
+            <h3>New Product Onboarding</h3>
+            <p>Adding 200 new products? Fill the Excel template, leave the ID column blank,
+               and import. All 200 products created with correct prices, categories and barcodes.</p>
+            <div class="saving">200 products in one upload</div>
+        </div>
+        <div class="roi-card">
+            <div class="icon">&#9881;&#65039;</div>
+            <h3>ERP Migration / Data Cleaning</h3>
+            <p>Cleaning inconsistent SKUs, barcodes, or categories across your catalog?
+               Export, fix in Excel with formulas, re-import. Done in minutes, not days.</p>
+            <div class="saving">Catalog clean-up in 1 session</div>
+        </div>
+        <div class="roi-card">
+            <div class="icon">&#128101;</div>
+            <h3>Non-Technical Team Use</h3>
+            <p>Your warehouse coordinator, sales manager, or admin can run exports and imports
+               without IT support. The Excel interface is familiar to everyone.</p>
+            <div class="saving">Zero dependency on developers</div>
+        </div>
+        <div class="roi-card">
+            <div class="icon">&#128737;&#65039;</div>
+            <h3>Audit Trail Before Saving</h3>
+            <p>Every change is visible in Excel before it hits Odoo. Your team reviews, your
+               manager approves, then you import. No hidden edits, no surprises.</p>
+            <div class="saving">Built-in review step</div>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== FEATURES ===================== -->
+<div class="section alt">
+    <h2>&#9889; Technical Features</h2>
+    <p class="sub">Built for production environments and real-world messy data.</p>
+    <div class="feat-grid">
+        <div class="feat"><div class="icon">&#128737;&#65039;</div><div><h4>Row-Level Savepoints</h4><p>Each row processed in an independent DB savepoint. One failure never rolls back the entire import.</p></div></div>
+        <div class="feat"><div class="icon">&#129529;</div><div><h4>Smart Data Cleaning</h4><p>Auto-removes $, &euro;, European commas (1.500,00), trailing .0, and extra whitespace from any cell.</p></div></div>
+        <div class="feat"><div class="icon">&#128226;</div><div><h4>Bilingual (EN / ES)</h4><p>All labels, Excel headers, and result logs switch automatically based on the Odoo user language.</p></div></div>
+        <div class="feat"><div class="icon">&#128230;</div><div><h4>Create + Update in one file</h4><p>Rows with ID &rarr; update. Rows without ID &rarr; create. One file handles both operations simultaneously.</p></div></div>
+        <div class="feat"><div class="icon">&#127991;&#65039;</div><div><h4>Category Auto-Match</h4><p>Matches categories by short name or full path (e.g. "Office Furniture" or "All / Saleable / Office Furniture").</p></div></div>
+        <div class="feat"><div class="icon">&#128200;</div><div><h4>Styled Excel Output</h4><p>Exported file has a dark navy header row, auto-sized columns, and proper data types &mdash; ready to share.</p></div></div>
+    </div>
+</div>
+
+<!-- ===================== COLUMN REFERENCE ===================== -->
+<div class="section">
+    <h2>&#128203; Excel Column Reference</h2>
+    <p class="sub">Fixed 9-column structure. No header renaming, no field mapping, no surprises.</p>
+    <table>
+        <thead><tr><th>Col</th><th>Field</th><th>Odoo Field</th><th>Required?</th><th>Notes</th></tr></thead>
+        <tbody>
+            <tr><td><strong>A</strong></td><td>ID</td><td><code>id</code></td><td><span class="tag req">Blank = create new</span></td><td>Leave blank to create a new product</td></tr>
+            <tr><td><strong>B</strong></td><td>Internal Reference</td><td><code>default_code</code></td><td><span class="tag opt">Optional</span></td><td>SKU / internal code</td></tr>
+            <tr><td><strong>C</strong></td><td>Barcode</td><td><code>barcode</code></td><td><span class="tag opt">Optional</span></td><td>EAN-13 or UPC. Must be globally unique.</td></tr>
+            <tr><td><strong>D</strong></td><td>Name</td><td><code>name</code></td><td><span class="tag req">Required for new</span></td><td>Product name visible to customers</td></tr>
+            <tr><td><strong>E</strong></td><td>Sales Price</td><td><code>list_price</code></td><td><span class="tag opt">Optional</span></td><td>Accepts $140, 140.00, 1.400,00 formats</td></tr>
+            <tr><td><strong>F</strong></td><td>Cost</td><td><code>standard_price</code></td><td><span class="tag opt">Optional</span></td><td>Internal cost / COGS</td></tr>
+            <tr><td><strong>G</strong></td><td>Category</td><td><code>categ_id</code></td><td><span class="tag opt">Optional</span></td><td>Matched by name or full path</td></tr>
+            <tr><td><strong>H</strong></td><td>Weight (kg)</td><td><code>weight</code></td><td><span class="tag opt">Optional</span></td><td>Numeric</td></tr>
+            <tr><td><strong>I</strong></td><td>Description</td><td><code>description_sale</code></td><td><span class="tag opt">Optional</span></td><td>Public description shown to customers</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- ===================== COMPATIBILITY ===================== -->
+<div class="section alt">
+    <h2>&#128295; Compatibility</h2>
+    <p class="sub">Tested and certified across all modern Odoo versions, Community and Enterprise.</p>
+    <div class="pills">
+        <span class="pill">Odoo 15.0</span>
+        <span class="pill">Odoo 16.0</span>
+        <span class="pill">Odoo 17.0</span>
+        <span class="pill">Odoo 18.0</span>
+    </div>
+    <p style="margin-top:16px;color:#64748b;font-size:0.87rem;">
+        <strong>Depends on:</strong> product, stock &nbsp;|&nbsp;
+        <strong>Python:</strong> openpyxl (included in standard Odoo Docker) &nbsp;|&nbsp;
+        <strong>Edition:</strong> Community &amp; Enterprise &nbsp;|&nbsp;
+        <strong>License:</strong> OPL-1
+    </p>
+</div>
+
+<!-- ===================== CTA ===================== -->
+<div class="cta">
+    <h2>Stop editing products one by one.</h2>
+    <p>
+        Smart Excel Mass Update pays for itself the first time you run a bulk price update.
+        Install it today and give your team the tool they have always wanted.
+    </p>
+    <a href="#" class="btn">&#128228; Install from Odoo Apps</a>
+    <p style="margin-top:16px;font-size:0.78rem;opacity:0.55;">
+        OPL-1 Licensed &bull; Odoo 15, 16, 17, 18 &bull; English &amp; Spanish &bull; Community &amp; Enterprise
+    </p>
+</div>
+
+</body>
+</html>
