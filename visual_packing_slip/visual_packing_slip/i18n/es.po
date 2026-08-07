@@ -1,0 +1,38 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* visual_packing_slip
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 17.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-05 23:00+0000\n"
+"PO-Revision-Date: 2026-08-05 23:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: Spanish\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: visual_packing_slip
+#: model:ir.model.fields,field_description:visual_packing_slip.field_res_config_settings__visual_packing_enable_images
+msgid "Show Product Images on Delivery Slip"
+msgstr "Mostrar imágenes de producto en albarán de entrega"
+
+#. module: visual_packing_slip
+#: model:ir.model.fields,field_description:visual_packing_slip.field_res_config_settings__visual_packing_image_size
+msgid "Product Image Size"
+msgstr "Tamaño de imagen de producto"
+
+#. module: visual_packing_slip
+msgid "Visual Packing Slip"
+msgstr "Visual Packing Slip"
+
+#. module: visual_packing_slip
+msgid "Product Image"
+msgstr "Imagen de Producto"
+
+#. module: visual_packing_slip
+msgid "Image"
+msgstr "Imagen"
