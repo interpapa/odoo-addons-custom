@@ -20,7 +20,8 @@
     'license': 'OPL-1',
     'price': 147.00,
     'currency': 'EUR',
-    'depends': ['product'],
+    'images': ['static/description/banner.jpg'],
+    'depends': ['product', 'stock'],
     'data': [
         'security/ir.model.access.csv',
         'wizard/smart_excel_update_views.xml',
